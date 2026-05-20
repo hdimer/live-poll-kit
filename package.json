@@ -1,0 +1,19 @@
+{
+  "name": "live-poll-kit",
+  "version": "1.0.0",
+  "description": "Drop-in live polling with QR codes for presentations and webinars. Multiple choice polls, word clouds, presenter-controlled or auto-advance flows.",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel deploy --prod"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.0",
+    "qrcode": "^1.5.3"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["poll", "polling", "qr-code", "webinar", "presentation", "vercel", "neon"],
+  "license": "MIT"
+}

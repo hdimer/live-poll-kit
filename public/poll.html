@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Live poll</title>
+<link rel="icon" href="/assets/favicon.jpg" type="image/jpeg">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600&family=Playfair+Display:ital@1&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0E0E0E;
+    --copper: #B87D4B;
+    --copper-hover: #c8956c;
+    --off-white: #F8F8F8;
+    --text: #1A1A1A;
+    --gray: #777;
+    --green: #4ade80;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Raleway', sans-serif;
+    background: var(--off-white);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.25rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  .poll {
+    width: 100%;
+    max-width: 420px;
+  }
+  .poll__label {
+    font-family: 'Raleway', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin-bottom: 1rem;
+  }
+  .poll__question {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 300;
+    font-size: 1.6rem;
+    line-height: 1.25;
+    margin-bottom: 1.5rem;
+  }
+  .poll__options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .poll__option {
+    padding: 1rem 1.25rem;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-family: 'Raleway', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+  }
+  .poll__option:hover { border-color: var(--copper); }
+  .poll__option.selected {
+    border-color: var(--copper);
+    background: rgba(184, 125, 75, 0.08);
+  }
+  .poll__input {
+    width: 100%;
+    padding: 1rem 1.25rem;
+    font-family: 'Raleway', sans-serif;
+    font-size: 1rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    outline: none;
+    background: white;
+    color: var(--text);
+    margin-bottom: 1rem;
+  }
+  .poll__input:focus { border-color: var(--copper); }
+  .poll__submit {
+    width: 100%;
+    padding: 1rem;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--black);
+    background: var(--copper);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .poll__submit:hover { background: var(--copper-hover); }
+  .poll__submit:disabled { opacity: 0.5; cursor: not-allowed; }
+  .poll__done {
+    text-align: center;
+    padding: 2rem 0;
+  }
+  .poll__done-check {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+  }
+  .poll__done-text {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 300;
+    color: var(--gray);
+  }
+  .poll__error {
+    text-align: center;
+    padding: 3rem 0;
+    color: var(--gray);
+  }
+  .loading {
+    text-align: center;
+    padding: 3rem 0;
+    color: var(--gray);
+    font-size: 0.9rem;
+  }
+  .poll__done {
+    text-align: center;
+    padding: 2rem 0;
+    animation: fadeSlideIn 0.4s ease;
+  }
+  .poll__done-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 1.25rem;
+    border-radius: 50%;
+    background: var(--copper);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .poll__done-icon svg {
+    width: 28px;
+    height: 28px;
+    stroke: white;
+    stroke-width: 2.5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .poll__done-icon svg path {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    animation: drawCheck 0.3s ease 0.2s forwards;
+  }
+  .poll__done-title {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 300;
+    font-size: 1.4rem;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+  .poll__done-subtitle {
+    font-family: 'Raleway', sans-serif;
+    font-size: 0.9rem;
+    color: var(--gray);
+  }
+  .poll__done-subtitle.italic {
+    font-family: 'Playfair Display', serif;
+    font-style: italic;
+    color: var(--copper);
+    font-size: 1rem;
+  }
+  .poll__done-pulse {
+    width: 8px;
+    height: 8px;
+    background: var(--copper);
+    border-radius: 50%;
+    margin: 1.25rem auto 0;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  .poll__done-dismiss {
+    font-size: 0.75rem;
+    color: #bbb;
+    margin-top: 1.5rem;
+    opacity: 0;
+    animation: fadeIn 0.5s ease 2s forwards;
+  }
+  .poll--entering { animation: fadeSlideIn 0.3s ease; }
+  .poll__label--flash { animation: labelFlash 0.6s ease; }
+  @keyframes scaleIn {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes drawCheck { to { stroke-dashoffset: 0; } }
+  @keyframes fadeSlideIn {
+    0% { opacity: 0; transform: translateY(12px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeSlideOut {
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-12px); }
+  }
+  @keyframes fadeIn { to { opacity: 1; } }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+  @keyframes labelFlash {
+    0% { color: var(--copper); }
+    50% { color: #d4a574; }
+    100% { color: var(--copper); }
+  }
+</style>
+</head>
+<body>
+<div class="poll" id="poll">
+  <div class="loading" id="loading">Loading...</div>
+</div>
+
+<script>
+(function() {
+  var pollEl = document.getElementById('poll');
+  var params = new URLSearchParams(window.location.search);
+  var questionId = params.get('id');
+  var groupId = params.get('group');
+  var currentQuestionId = null;
+  var groupQuestionCount = null;
+  var groupMode = null;
+  var autoQuestions = null; // all questions for auto-advance mode
+  var answeredQuestions = JSON.parse(sessionStorage.getItem('poll-answered') || '{}');
+
+  if (!questionId && !groupId) {
+    pollEl.innerHTML = '<div class="poll__error">No question specified.</div>';
+    return;
+  }
+
+  if (groupId) {
+    loadGroupQuestion();
+    setInterval(loadGroupQuestion, 2500);
+  } else {
+    loadSingleQuestion();
+  }
+
+  function loadSingleQuestion() {
+    fetch('/api/poll?id=' + questionId)
+      .then(function(r) { if (!r.ok) throw new Error('not found'); return r.json(); })
+      .then(function(q) { currentQuestionId = q.id; renderQuestion(q); })
+      .catch(function() { pollEl.innerHTML = '<div class="poll__error">Question not found.</div>'; });
+  }
+
+  function countAnsweredInGroup() {
+    var count = 0;
+    for (var key in answeredQuestions) { if (answeredQuestions[key]) count++; }
+    return count;
+  }
+
+  function isGroupDone() {
+    return groupQuestionCount !== null && countAnsweredInGroup() >= groupQuestionCount;
+  }
+
+  function loadGroupQuestion() {
+    fetch('/api/poll?group=' + groupId)
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        groupMode = data.mode || 'presenter';
+        if (data.questionCount !== undefined) groupQuestionCount = data.questionCount;
+
+        if (groupMode === 'auto') {
+          handleAutoMode(data);
+        } else {
+          handlePresenterMode(data);
+        }
+      });
+  }
+
+  // Auto-advance: client sequences through questions locally
+  function handleAutoMode(data) {
+    autoQuestions = data.questions || [];
+    groupQuestionCount = autoQuestions.length;
+
+    // Find the first unanswered question
+    var nextQ = null;
+    for (var i = 0; i < autoQuestions.length; i++) {
+      if (!answeredQuestions[autoQuestions[i].id]) {
+        nextQ = autoQuestions[i];
+        break;
+      }
+    }
+
+    if (!nextQ) {
+      // All answered
+      if (!pollEl.querySelector('.poll__done') || !isGroupDone()) {
+        renderDoneState();
+      }
+      return;
+    }
+
+    if (nextQ.id === currentQuestionId) return; // already showing this one
+
+    var isTransition = currentQuestionId !== null || pollEl.querySelector('.poll__done');
+    currentQuestionId = nextQ.id;
+    if (isTransition) {
+      transitionToQuestion(nextQ);
+    } else {
+      renderQuestion(nextQ);
+    }
+  }
+
+  // Presenter-controlled: server tells us which question is active
+  function handlePresenterMode(data) {
+    if (data.waiting) {
+      if (currentQuestionId !== null || pollEl.querySelector('.loading')) {
+        currentQuestionId = null;
+        renderDoneState();
+      } else if (!pollEl.querySelector('.poll__done')) {
+        renderDoneState();
+      }
+      return;
+    }
+    if (data.id === currentQuestionId) return;
+    if (answeredQuestions[data.id]) {
+      currentQuestionId = data.id;
+      renderDoneState();
+    } else {
+      var isTransition = currentQuestionId !== null || pollEl.querySelector('.poll__done');
+      currentQuestionId = data.id;
+      if (isTransition) {
+        transitionToQuestion(data);
+      } else {
+        renderQuestion(data);
+      }
+    }
+  }
+
+  var checkIcon = '<div class="poll__done-icon"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div>';
+
+  function renderDoneState() {
+    if (isGroupDone()) {
+      pollEl.innerHTML =
+        '<div class="poll__done">' + checkIcon +
+        '<div class="poll__done-title">You\'re all set</div>' +
+        '<div class="poll__done-subtitle italic">Thanks for participating.</div>' +
+        '<div class="poll__done-dismiss">You can close this page</div></div>';
+    } else {
+      pollEl.innerHTML =
+        '<div class="poll__done">' + checkIcon +
+        '<div class="poll__done-title">Answer recorded</div>' +
+        '<div class="poll__done-subtitle">Sit tight. The next question is coming.</div>' +
+        '<div class="poll__done-pulse"></div></div>';
+    }
+  }
+
+  function transitionToQuestion(q) {
+    pollEl.style.animation = 'fadeSlideOut 0.2s ease forwards';
+    setTimeout(function() {
+      pollEl.style.animation = '';
+      renderQuestion(q);
+      pollEl.classList.add('poll--entering');
+      var label = pollEl.querySelector('.poll__label');
+      if (label) label.classList.add('poll__label--flash');
+      setTimeout(function() { pollEl.classList.remove('poll--entering'); }, 400);
+    }, 250);
+  }
+
+  function renderQuestion(q) {
+    var label = 'Live poll';
+    if (groupQuestionCount && groupQuestionCount > 1 && q.position !== undefined) {
+      label = 'Question ' + (q.position + 1) + ' of ' + groupQuestionCount;
+    }
+    var html = '<div class="poll__label">' + label + '</div>';
+    html += '<div class="poll__question">' + esc(q.question) + '</div>';
+
+    if (q.type === 'poll') {
+      var options = typeof q.options === 'string' ? JSON.parse(q.options) : (q.options || []);
+      html += '<div class="poll__options" id="options">';
+      options.forEach(function(opt, idx) {
+        html += '<button class="poll__option" data-idx="' + idx + '">' + esc(opt) + '</button>';
+      });
+      html += '</div>';
+      html += '<button class="poll__submit" id="submitBtn" onclick="submitVote()" disabled>Select an answer</button>';
+      window._pollOptions = options;
+    } else {
+      html += '<input type="text" class="poll__input" id="wordInput" placeholder="Type your answer..." maxlength="100" autocomplete="off">';
+      html += '<button class="poll__submit" id="submitBtn" onclick="submitWord()">Submit</button>';
+    }
+
+    pollEl.innerHTML = html;
+
+    if (q.type === 'poll') {
+      document.getElementById('options').addEventListener('click', function(e) {
+        var btn = e.target.closest('.poll__option');
+        if (!btn) return;
+        var idx = parseInt(btn.getAttribute('data-idx'));
+        selectedAnswer = window._pollOptions[idx];
+        document.querySelectorAll('.poll__option').forEach(function(b) { b.classList.remove('selected'); });
+        btn.classList.add('selected');
+        var submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit';
+      });
+    }
+
+    if (q.type === 'wordcloud') {
+      document.getElementById('wordInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') submitWord();
+      });
+    }
+  }
+
+  var selectedAnswer = '';
+
+  window.submitVote = function() {
+    if (!selectedAnswer) return;
+    submit(selectedAnswer);
+  };
+
+  window.submitWord = function() {
+    var input = document.getElementById('wordInput');
+    var word = input.value.trim();
+    if (!word) return;
+    submit(word);
+  };
+
+  function submit(answer) {
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    fetch('/api/poll', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questionId: currentQuestionId, answer: answer })
+    }).then(function(r) {
+      if (!r.ok) throw new Error('failed');
+      answeredQuestions[currentQuestionId] = true;
+      sessionStorage.setItem('poll-answered', JSON.stringify(answeredQuestions));
+      selectedAnswer = '';
+
+      if (!groupId) {
+        pollEl.innerHTML =
+          '<div class="poll__done">' + checkIcon +
+          '<div class="poll__done-title">Got it. Thanks!</div></div>';
+        return;
+      }
+
+      if (groupMode === 'auto') {
+        // Immediately show next question or done state
+        handleAutoMode({ questions: autoQuestions, questionCount: groupQuestionCount });
+      } else {
+        renderDoneState();
+      }
+    }).catch(function() {
+      btn.disabled = false;
+      btn.textContent = 'Try again';
+    });
+  }
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+})();
+</script>
+</body>
+</html>

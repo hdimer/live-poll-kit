@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Poll admin</title>
+<link rel="icon" href="/assets/favicon.jpg" type="image/jpeg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/admin.css">
+<style>
+  /* Event selector bar */
+  .event-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .event-bar select {
+    padding: 8px 12px;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    background: var(--white);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius);
+    cursor: pointer;
+    outline: none;
+    flex: 1;
+    min-width: 200px;
+    max-width: 400px;
+    transition: border-color 0.2s ease;
+  }
+  .event-bar select:focus { border-color: var(--accent); }
+  .event-bar .event-date {
+    font-size: 0.82rem;
+    color: var(--cool-gray);
+  }
+
+  /* Drag-and-drop item list */
+  .item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Shared card base for groups and standalone questions */
+  .poll-card {
+    background: var(--white);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    position: relative;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  }
+  .poll-card.active-poll {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+  }
+
+  /* Drag handle */
+  .drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    cursor: grab;
+    color: var(--cool-gray-light);
+    flex-shrink: 0;
+    user-select: none;
+    transition: color 0.15s ease;
+  }
+  .drag-handle:hover { color: var(--text-secondary); }
+  .drag-handle:active { cursor: grabbing; }
+  .drag-handle svg {
+    pointer-events: none;
+  }
+
+  /* Card header row */
+  .poll-card__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 0.5rem;
+  }
+  .poll-card__header-content {
+    flex: 1;
+    min-width: 0;
+  }
+  .poll-card__badges {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .poll-card__type {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-bg);
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .poll-card__type.group-badge {
+    color: #6366f1;
+    background: #eef2ff;
+  }
+  .poll-card__type.wordcloud-badge {
+    color: #059669;
+    background: #ecfdf5;
+  }
+  .poll-card__question {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    word-break: break-word;
+  }
+  .poll-card__options {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .poll-card__options li {
+    padding: 6px 12px;
+    background: var(--secondary-bg);
+    border-radius: 5px;
+  }
+  .poll-card__actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  /* Group-specific styling */
+  .group-card {
+    border-left: 3px solid #6366f1;
+  }
+  .group-card__questions {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .group-question {
+    margin-left: 1rem;
+    border-left: 2px solid #e5e7eb;
+    padding-left: 1rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    background: var(--bg);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding-right: 1rem;
+    position: relative;
+  }
+  .group-question.active-poll {
+    border-left-color: var(--accent);
+    background: var(--accent-bg);
+  }
+  .group-question .pos-number {
+    font-size: 11px;
+    color: var(--cool-gray);
+    margin-right: 8px;
+    font-weight: 600;
+  }
+
+  /* Buttons */
+  .btn-sm {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-card);
+    background: var(--white);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: background 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn-sm:hover { background: var(--secondary-bg); }
+  .btn-sm.danger { color: var(--accent); border-color: rgba(200,16,46,0.2); }
+  .btn-sm.danger:hover { background: var(--accent-bg); }
+  .btn-sm.active-btn { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-sm.active-btn:hover { background: var(--accent-hover); }
+  .btn-primary {
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: white;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-weight: 500;
+    transition: background 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn-primary:hover { background: var(--accent-hover); }
+
+  /* QR code container */
+  .qr-wrap {
+    display: inline-block;
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-card);
+    margin-top: 0.5rem;
+  }
+  .qr-wrap img { display: block; }
+  .qr-url {
+    font-size: 11px;
+    color: var(--cool-gray);
+    margin-top: 6px;
+    text-align: center;
+    word-break: break-all;
+  }
+
+  /* Links row */
+  .links-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+  }
+  .links-row a {
+    font-size: 12px;
+    color: var(--cool-gray);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+  .links-row a:hover { color: var(--accent); }
+
+  /* Drag states */
+  .poll-card.dragging,
+  .group-question.dragging {
+    opacity: 0.4;
+  }
+  .poll-card.drag-over {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(200, 16, 46, 0.2);
+  }
+  .group-question.drag-over {
+    border-left-color: var(--accent);
+    background: rgba(200, 16, 46, 0.06);
+  }
+  .drop-indicator {
+    height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    margin: -2px 0;
+    transition: opacity 0.1s ease;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.15s ease;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    width: 90%;
+    max-width: 480px;
+    box-shadow: var(--shadow-lg);
+    animation: slideUp 0.2s ease;
+  }
+  .modal h3 {
+    font-family: var(--font-heading);
+    font-size: 1.3rem;
+    margin-bottom: 1.25rem;
+  }
+  .modal label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.3rem;
+  }
+  .modal input, .modal select, .modal textarea {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    font-size: 14px;
+    border: 1px solid var(--border-card);
+    border-radius: 8px;
+    font-family: var(--font-body);
+    margin-bottom: 1rem;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--accent); }
+  .modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+  }
+  .options-list { margin-bottom: 1rem; }
+  .option-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    align-items: center;
+  }
+  .option-row input { margin-bottom: 0; flex: 1; }
+  .option-remove {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: #ccc;
+    font-size: 18px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .option-remove:hover { background: var(--accent-bg); color: var(--accent); }
+  .add-option {
+    font-size: 12px;
+    color: var(--cool-gray);
+    background: none;
+    border: 1px dashed var(--border-card);
+    padding: 4px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .add-option:hover { border-color: var(--accent); color: var(--accent); }
+  .type-hint {
+    font-size: 12px;
+    color: var(--cool-gray);
+    margin-bottom: 1rem;
+    margin-top: -0.5rem;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--cool-gray);
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: var(--white);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 12px 40px rgba(17, 24, 39, 0.15);
+    z-index: 2000;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    opacity: 0;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+    pointer-events: none;
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .toast.success { border-left: 4px solid #22c55e; }
+  .toast.error { border-left: 4px solid var(--accent); }
+
+  @media (max-width: 640px) {
+    .admin-header { flex-direction: column; align-items: flex-start; }
+    .admin-header-right { flex-wrap: wrap; width: 100%; }
+    .event-bar { flex-direction: column; align-items: stretch; }
+    .event-bar select { max-width: none; }
+    .poll-card { padding: 1rem; }
+    .group-question { margin-left: 0.5rem; padding-left: 0.75rem; padding-right: 0.75rem; }
+  }
+</style>
+</head>
+<body>
+  <!-- Login gate -->
+  <div id="loginGate" class="login-gate">
+    <div class="login-card">
+      <h1>Poll admin</h1>
+      <p>Enter your admin key to manage live polls.</p>
+      <div class="login-form">
+        <input type="password" id="adminKeyInput" placeholder="Admin key" autocomplete="off">
+        <button id="loginBtn">View polls</button>
+      </div>
+      <p class="login-error hidden" id="loginError">Invalid key. Try again.</p>
+    </div>
+  </div>
+
+  <!-- Admin view -->
+  <div id="adminView" class="admin-view hidden">
+    <header class="admin-header">
+      <div class="admin-header-left">
+        <h1>Live polls</h1>
+        <p class="convo-count" id="pollCount">Loading...</p>
+      </div>
+      <div class="admin-header-right">
+        <button class="btn-primary" id="createGroupBtn">Create group</button>
+        <button class="btn-primary" id="addQuestionBtn">Add question</button>
+        <button class="refresh-btn" id="refreshBtn">Refresh</button>
+        <a href="/webinar" class="back-link">Back to webinar</a>
+      </div>
+    </header>
+
+    <!-- Event selector -->
+    <div class="event-bar">
+      <select id="eventSelect">
+        <option value="">Select an event...</option>
+      </select>
+      <button class="btn-sm" id="createEventBtn">+ Create event</button>
+      <button class="btn-sm danger hidden" id="deleteEventBtn">Delete event</button>
+      <span class="event-date" id="eventDate"></span>
+    </div>
+
+    <!-- Items list (groups + standalone questions, drag-and-drop) -->
+    <div class="item-list" id="itemList"></div>
+    <div class="empty-state hidden" id="emptyState">No polls in this event yet. Create a group or add a question.</div>
+    <div class="empty-state hidden" id="noEventState">Select or create an event to get started.</div>
+  </div>
+
+  <!-- Create/Add question modal -->
+  <div class="modal-overlay" id="questionModal">
+    <div class="modal">
+      <h3 id="questionModalTitle">Create question</h3>
+      <label for="typeSelect">Type</label>
+      <select id="typeSelect">
+        <option value="poll">Poll (multiple choice)</option>
+        <option value="wordcloud">Word cloud (open-ended)</option>
+      </select>
+      <div class="type-hint" id="typeHint">Participants pick one of the options below.</div>
+      <label for="questionInput">Question</label>
+      <input type="text" id="questionInput" placeholder="What's your question?" autocomplete="off">
+      <div id="optionsWrap">
+        <label>Options</label>
+        <div class="options-list" id="optionsList"></div>
+        <button class="add-option" id="addOptionBtn">+ Add option</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-sm" id="questionCancelBtn">Cancel</button>
+        <button class="btn-primary" id="questionSaveBtn">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create event modal -->
+  <div class="modal-overlay" id="eventModal">
+    <div class="modal">
+      <h3>Create event</h3>
+      <label for="eventTitleInput">Title</label>
+      <input type="text" id="eventTitleInput" placeholder="e.g. May 8 webinar" autocomplete="off">
+      <label for="eventDateInput">Date</label>
+      <input type="date" id="eventDateInput">
+      <div class="modal-actions">
+        <button class="btn-sm" id="eventCancelBtn">Cancel</button>
+        <button class="btn-primary" id="eventSaveBtn">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create group modal -->
+  <div class="modal-overlay" id="groupModal">
+    <div class="modal">
+      <h3>Create group</h3>
+      <label for="groupTitleInput">Group title</label>
+      <input type="text" id="groupTitleInput" placeholder="e.g. AI tools knowledge check" autocomplete="off">
+      <div class="modal-actions">
+        <button class="btn-sm" id="groupCancelBtn">Cancel</button>
+        <button class="btn-primary" id="groupSaveBtn">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <span id="toastMessage"></span>
+  </div>
+
+<script>
+(function() {
+  // =========================================
+  // DOM references
+  // =========================================
+  var loginGate = document.getElementById('loginGate');
+  var adminView = document.getElementById('adminView');
+  var adminKeyInput = document.getElementById('adminKeyInput');
+  var loginError = document.getElementById('loginError');
+  var loginBtn = document.getElementById('loginBtn');
+  var pollCount = document.getElementById('pollCount');
+  var itemList = document.getElementById('itemList');
+  var emptyState = document.getElementById('emptyState');
+  var noEventState = document.getElementById('noEventState');
+  var eventSelect = document.getElementById('eventSelect');
+  var eventDate = document.getElementById('eventDate');
+  var deleteEventBtn = document.getElementById('deleteEventBtn');
+  var refreshBtn = document.getElementById('refreshBtn');
+  var createEventBtn = document.getElementById('createEventBtn');
+  var createGroupBtn = document.getElementById('createGroupBtn');
+  var addQuestionBtn = document.getElementById('addQuestionBtn');
+
+  // Question modal
+  var questionModal = document.getElementById('questionModal');
+  var questionModalTitle = document.getElementById('questionModalTitle');
+  var typeSelect = document.getElementById('typeSelect');
+  var typeHint = document.getElementById('typeHint');
+  var questionInput = document.getElementById('questionInput');
+  var optionsWrap = document.getElementById('optionsWrap');
+  var optionsList = document.getElementById('optionsList');
+  var addOptionBtn = document.getElementById('addOptionBtn');
+  var questionCancelBtn = document.getElementById('questionCancelBtn');
+  var questionSaveBtn = document.getElementById('questionSaveBtn');
+
+  // Event modal
+  var eventModal = document.getElementById('eventModal');
+  var eventTitleInput = document.getElementById('eventTitleInput');
+  var eventDateInput = document.getElementById('eventDateInput');
+  var eventCancelBtn = document.getElementById('eventCancelBtn');
+  var eventSaveBtn = document.getElementById('eventSaveBtn');
+
+  // Group modal
+  var groupModal = document.getElementById('groupModal');
+  var groupTitleInput = document.getElementById('groupTitleInput');
+  var groupCancelBtn = document.getElementById('groupCancelBtn');
+  var groupSaveBtn = document.getElementById('groupSaveBtn');
+
+  // Toast
+  var toastEl = document.getElementById('toast');
+  var toastMessage = document.getElementById('toastMessage');
+
+  // =========================================
+  // State
+  // =========================================
+  var allEvents = [];
+  var allGroups = [];
+  var allQuestions = [];
+  var currentEventId = null;
+  var addToGroupId = null; // when adding a question to a specific group
+  var toastTimer = null;
+
+  // =========================================
+  // Utilities
+  // =========================================
+  function getKey() { return localStorage.getItem('adminKey') || ''; }
+  function setKey(k) { localStorage.setItem('adminKey', k); }
+
+  function api(method, body) {
+    return fetch('/api/poll', {
+      method: method,
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getKey() },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function showToast(msg, type) {
+    toastMessage.textContent = msg;
+    toastEl.className = 'toast ' + (type || 'success');
+    // Force reflow
+    void toastEl.offsetWidth;
+    toastEl.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() {
+      toastEl.classList.remove('show');
+    }, 2500);
+  }
+
+  function formatDate(d) {
+    if (!d) return '';
+    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  // SVG for drag handle (6-dot grip)
+  var GRIP_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="5" cy="3" r="1.5"/><circle cx="11" cy="3" r="1.5"/><circle cx="5" cy="8" r="1.5"/><circle cx="11" cy="8" r="1.5"/><circle cx="5" cy="13" r="1.5"/><circle cx="11" cy="13" r="1.5"/></svg>';
+
+  // =========================================
+  // Auth
+  // =========================================
+  loginBtn.addEventListener('click', tryLogin);
+  adminKeyInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') tryLogin(); });
+
+  function tryLogin() {
+    var key = adminKeyInput.value.trim();
+    if (!key) return;
+    setKey(key);
+    loadData().then(function(ok) {
+      if (ok) {
+        loginGate.classList.add('hidden');
+        adminView.classList.remove('hidden');
+      } else {
+        loginError.classList.remove('hidden');
+      }
+    });
+  }
+
+  if (getKey()) {
+    loadData().then(function(ok) {
+      if (ok) {
+        loginGate.classList.add('hidden');
+        adminView.classList.remove('hidden');
+      }
+    });
+  }
+
+  // =========================================
+  // Data loading
+  // =========================================
+  function loadData() {
+    return fetch('/api/poll', {
+      headers: { 'Authorization': 'Bearer ' + getKey() }
+    }).then(function(r) {
+      if (!r.ok) return false;
+      return r.json().then(function(data) {
+        allEvents = data.events || [];
+        allGroups = data.groups || [];
+        allQuestions = data.questions || [];
+        renderEventSelector();
+        renderItems();
+        return true;
+      });
+    }).catch(function() { return false; });
+  }
+
+  refreshBtn.addEventListener('click', function() { loadData(); });
+
+  // =========================================
+  // Event selector
+  // =========================================
+  function renderEventSelector() {
+    var html = '<option value="">Select an event...</option>';
+    allEvents.forEach(function(ev) {
+      var selected = ev.id === currentEventId ? ' selected' : '';
+      html += '<option value="' + ev.id + '"' + selected + '>' + esc(ev.title) + '</option>';
+    });
+    eventSelect.innerHTML = html;
+
+    // If we had a selected event and it still exists, keep it
+    if (currentEventId && !allEvents.some(function(e) { return e.id === currentEventId; })) {
+      currentEventId = null;
+    }
+
+    // Auto-select first event if none selected
+    if (!currentEventId && allEvents.length > 0) {
+      currentEventId = allEvents[0].id;
+      eventSelect.value = currentEventId;
+    }
+
+    updateEventMeta();
+  }
+
+  eventSelect.addEventListener('change', function() {
+    currentEventId = eventSelect.value || null;
+    updateEventMeta();
+    renderItems();
+  });
+
+  function updateEventMeta() {
+    var ev = allEvents.find(function(e) { return e.id === currentEventId; });
+    if (ev) {
+      eventDate.textContent = ev.event_date ? formatDate(ev.event_date) : '';
+      deleteEventBtn.classList.remove('hidden');
+    } else {
+      eventDate.textContent = '';
+      deleteEventBtn.classList.add('hidden');
+    }
+  }
+
+  // =========================================
+  // Render items (groups + standalone questions) for the selected event
+  // =========================================
+  function renderItems() {
+    if (!currentEventId) {
+      itemList.innerHTML = '';
+      emptyState.classList.add('hidden');
+      noEventState.classList.remove('hidden');
+      pollCount.textContent = allEvents.length + ' event' + (allEvents.length !== 1 ? 's' : '');
+      return;
+    }
+    noEventState.classList.add('hidden');
+
+    // Filter groups and questions for this event
+    var eventGroups = allGroups
+      .filter(function(g) { return g.event_id === currentEventId; })
+      .sort(function(a, b) { return (a.position || 0) - (b.position || 0); });
+
+    var standaloneQuestions = allQuestions
+      .filter(function(q) { return q.event_id === currentEventId && !q.group_id; })
+      .sort(function(a, b) { return (a.position || 0) - (b.position || 0); });
+
+    var eventQuestionCount = allQuestions.filter(function(q) {
+      return q.event_id === currentEventId || eventGroups.some(function(g) { return g.id === q.group_id; });
+    }).length;
+
+    pollCount.textContent = eventQuestionCount + ' question' + (eventQuestionCount !== 1 ? 's' : '') +
+      (eventGroups.length ? ', ' + eventGroups.length + ' group' + (eventGroups.length !== 1 ? 's' : '') : '');
+
+    // Build a combined ordered list: groups and standalone questions interleaved by position
+    // Groups use their position; standalone questions use their position.
+    // We merge them into one list sorted by position.
+    var items = [];
+    eventGroups.forEach(function(g) {
+      items.push({ type: 'group', data: g, position: g.position || 0 });
+    });
+    standaloneQuestions.forEach(function(q) {
+      items.push({ type: 'question', data: q, position: q.position || 0 });
+    });
+    items.sort(function(a, b) { return a.position - b.position; });
+
+    if (items.length === 0) {
+      itemList.innerHTML = '';
+      emptyState.classList.remove('hidden');
+      return;
+    }
+    emptyState.classList.add('hidden');
+
+    var html = '';
+    items.forEach(function(item, idx) {
+      if (item.type === 'group') {
+        html += renderGroupCard(item.data, idx);
+      } else {
+        html += renderStandaloneCard(item.data, idx);
+      }
+    });
+
+    itemList.innerHTML = html;
+
+    // Attach drag-and-drop to top-level items
+    attachTopLevelDragDrop();
+    // Attach drag-and-drop within each group
+    attachGroupDragDrop();
+  }
+
+  function renderGroupCard(group, itemIdx) {
+    var gQuestions = allQuestions
+      .filter(function(q) { return q.group_id === group.id; })
+      .sort(function(a, b) { return (a.position || 0) - (b.position || 0); });
+
+    var h = '';
+    h += '<div class="poll-card group-card" draggable="true" data-item-type="groups" data-item-id="' + group.id + '" data-item-idx="' + itemIdx + '">';
+    h += '<div class="poll-card__header">';
+    h += '<div class="drag-handle" title="Drag to reorder">' + GRIP_SVG + '</div>';
+    h += '<div class="poll-card__header-content">';
+    h += '<div class="poll-card__badges"><span class="poll-card__type group-badge">Group</span></div>';
+    h += '<div class="poll-card__question">' + esc(group.title) + '</div>';
+    h += '</div>';
+    h += '</div>';
+
+    // Links row
+    h += '<div class="links-row">';
+    h += '<a href="/poll?group=' + group.id + '" target="_blank">Voter page &rarr;</a>';
+    h += '<a href="/poll-results?group=' + group.id + '" target="_blank">Results page &rarr;</a>';
+    h += '</div>';
+
+    // Actions
+    h += '<div class="poll-card__actions">';
+    h += '<button class="btn-sm" data-action="toggle-qr" data-qr-id="qr-group-' + group.id + '">QR code</button>';
+    h += '<button class="btn-sm" data-action="add-to-group" data-group-id="' + group.id + '">+ Add question</button>';
+    h += '<button class="btn-sm" data-action="toggle-mode" data-group-id="' + group.id + '" data-mode="' + (group.mode || 'presenter') + '">' + (group.mode === 'auto' ? 'Mode: auto-advance' : 'Mode: presenter') + '</button>';
+    h += '<button class="btn-sm" data-action="edit-group" data-group-id="' + group.id + '" data-group-title="' + esc(group.title) + '">Edit</button>';
+    h += '<button class="btn-sm danger" data-action="delete-group" data-group-id="' + group.id + '">Delete group</button>';
+    h += '</div>';
+
+    // QR code (hidden)
+    h += '<div class="qr-wrap hidden" id="qr-group-' + group.id + '">';
+    h += '<img src="/api/poll-qr?group=' + group.id + '" width="200" height="200" alt="QR code">';
+    h += '<div class="qr-url"><a href="/poll?group=' + group.id + '" target="_blank" style="color:var(--cool-gray);text-decoration:underline;">/poll?group=' + group.id + '</a></div>';
+    h += '</div>';
+
+    // Questions within this group
+    if (gQuestions.length > 0) {
+      h += '<div class="group-card__questions" data-group-id="' + group.id + '">';
+      gQuestions.forEach(function(q, qIdx) {
+        h += renderGroupQuestionCard(q, qIdx, group.id);
+      });
+      h += '</div>';
+    }
+
+    h += '</div>';
+    return h;
+  }
+
+  function renderGroupQuestionCard(q, qIdx, groupId) {
+    var opts = '';
+    if (q.type === 'poll' && q.options) {
+      var arr = typeof q.options === 'string' ? JSON.parse(q.options) : q.options;
+      opts = '<ul class="poll-card__options">' + arr.map(function(o) { return '<li>' + esc(o) + '</li>'; }).join('') + '</ul>';
+    }
+
+    var activeClass = q.active ? ' active-poll' : '';
+    var typeBadgeClass = q.type === 'wordcloud' ? ' wordcloud-badge' : '';
+
+    var h = '';
+    h += '<div class="group-question' + activeClass + '" draggable="true" data-q-id="' + q.id + '" data-q-idx="' + qIdx + '">';
+    h += '<div class="poll-card__header">';
+    h += '<div class="drag-handle" title="Drag to reorder">' + GRIP_SVG + '</div>';
+    h += '<div class="poll-card__header-content">';
+    h += '<div class="poll-card__badges">';
+    h += '<span class="poll-card__type' + typeBadgeClass + '">' + q.type + '</span>';
+    h += '</div>';
+    h += '<div class="poll-card__question"><span class="pos-number">#' + (qIdx + 1) + '</span>' + esc(q.question) + '</div>';
+    h += '</div>';
+    h += '</div>';
+    h += opts;
+    h += '<div class="poll-card__actions">';
+    h += '<button class="btn-sm' + (q.active ? ' active-btn' : '') + '" data-action="activate-in-group" data-q-id="' + q.id + '" data-group-id="' + groupId + '">' + (q.active ? 'Live now' : 'Show to audience') + '</button>';
+    h += '<button class="btn-sm" data-action="edit-question" data-q-id="' + q.id + '" data-q-type="' + q.type + '" data-q-question="' + esc(q.question) + '" data-q-options="' + btoa(JSON.stringify(arr || [])) + '">Edit</button>';
+    h += '<button class="btn-sm" data-action="reset-question" data-q-id="' + q.id + '">Reset</button>';
+    h += '<button class="btn-sm danger" data-action="delete-question" data-q-id="' + q.id + '">Delete</button>';
+    h += '</div>';
+    h += '</div>';
+    return h;
+  }
+
+  function renderStandaloneCard(q, itemIdx) {
+    var opts = '';
+    if (q.type === 'poll' && q.options) {
+      var arr = typeof q.options === 'string' ? JSON.parse(q.options) : q.options;
+      opts = '<ul class="poll-card__options">' + arr.map(function(o) { return '<li>' + esc(o) + '</li>'; }).join('') + '</ul>';
+    }
+
+    var activeClass = q.active ? ' active-poll' : '';
+    var typeBadgeClass = q.type === 'wordcloud' ? ' wordcloud-badge' : '';
+
+    var h = '';
+    h += '<div class="poll-card' + activeClass + '" draggable="true" data-item-type="questions" data-item-id="' + q.id + '" data-item-idx="' + itemIdx + '">';
+    h += '<div class="poll-card__header">';
+    h += '<div class="drag-handle" title="Drag to reorder">' + GRIP_SVG + '</div>';
+    h += '<div class="poll-card__header-content">';
+    h += '<div class="poll-card__badges">';
+    h += '<span class="poll-card__type' + typeBadgeClass + '">' + q.type + '</span>';
+    h += '</div>';
+    h += '<div class="poll-card__question">' + esc(q.question) + '</div>';
+    h += '</div>';
+    h += '</div>';
+    h += opts;
+
+    // Links row
+    h += '<div class="links-row">';
+    h += '<a href="/poll?id=' + q.id + '" target="_blank">Voter page &rarr;</a>';
+    h += '<a href="/poll-results?id=' + q.id + '" target="_blank">Results page &rarr;</a>';
+    h += '</div>';
+
+    // Actions
+    h += '<div class="poll-card__actions">';
+    h += '<button class="btn-sm' + (q.active ? ' active-btn' : '') + '" data-action="toggle-active" data-q-id="' + q.id + '" data-active="' + (q.active ? 'true' : 'false') + '">' + (q.active ? 'Live now' : 'Show to audience') + '</button>';
+    h += '<button class="btn-sm" data-action="toggle-qr" data-qr-id="qr-' + q.id + '">QR code</button>';
+    h += '<button class="btn-sm" data-action="edit-question" data-q-id="' + q.id + '" data-q-type="' + q.type + '" data-q-question="' + esc(q.question) + '" data-q-options="' + btoa(JSON.stringify(arr || [])) + '">Edit</button>';
+    h += '<button class="btn-sm" data-action="reset-question" data-q-id="' + q.id + '">Reset</button>';
+    h += '<button class="btn-sm danger" data-action="delete-question" data-q-id="' + q.id + '">Delete</button>';
+    h += '</div>';
+
+    // QR code (hidden)
+    h += '<div class="qr-wrap hidden" id="qr-' + q.id + '">';
+    h += '<img src="/api/poll-qr?id=' + q.id + '" width="200" height="200" alt="QR code">';
+    h += '<div class="qr-url"><a href="/poll?id=' + q.id + '" target="_blank" style="color:var(--cool-gray);text-decoration:underline;">/poll?id=' + q.id + '</a></div>';
+    h += '</div>';
+
+    h += '</div>';
+    return h;
+  }
+
+  // =========================================
+  // Event-delegated button actions
+  // =========================================
+  itemList.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var action = btn.getAttribute('data-action');
+
+    if (action === 'toggle-qr') {
+      var qrId = btn.getAttribute('data-qr-id');
+      var qrEl = document.getElementById(qrId);
+      if (qrEl) qrEl.classList.toggle('hidden');
+    }
+
+    if (action === 'toggle-active') {
+      var qId = btn.getAttribute('data-q-id');
+      var isActive = btn.getAttribute('data-active') === 'true';
+      api('PATCH', { id: qId, active: !isActive }).then(function() {
+        loadData();
+        showToast(isActive ? 'Question deactivated' : 'Question activated');
+      });
+    }
+
+    if (action === 'activate-in-group') {
+      var qId = btn.getAttribute('data-q-id');
+      var gId = btn.getAttribute('data-group-id');
+      api('PATCH', { action: 'activate', id: qId, groupId: gId }).then(function() {
+        loadData();
+        showToast('Question activated');
+      });
+    }
+
+    if (action === 'reset-question') {
+      var qId = btn.getAttribute('data-q-id');
+      if (!confirm('Clear all responses for this question?')) return;
+      api('DELETE', { action: 'reset', id: qId }).then(function() {
+        loadData();
+        showToast('Responses cleared');
+      });
+    }
+
+    if (action === 'delete-question') {
+      var qId = btn.getAttribute('data-q-id');
+      if (!confirm('Delete this question and all its responses?')) return;
+      api('DELETE', { id: qId }).then(function() {
+        loadData();
+        showToast('Question deleted');
+      });
+    }
+
+    if (action === 'delete-group') {
+      var gId = btn.getAttribute('data-group-id');
+      if (!confirm('Delete this group and all its questions?')) return;
+      api('DELETE', { groupId: gId }).then(function() {
+        loadData();
+        showToast('Group deleted');
+      });
+    }
+
+    if (action === 'add-to-group') {
+      var gId = btn.getAttribute('data-group-id');
+      openQuestionModal(gId);
+    }
+
+    if (action === 'toggle-mode') {
+      var gId = btn.getAttribute('data-group-id');
+      var currentMode = btn.getAttribute('data-mode');
+      var newMode = currentMode === 'auto' ? 'presenter' : 'auto';
+      api('PATCH', { action: 'editGroup', id: gId, mode: newMode }).then(function() {
+        loadData();
+        showToast('Mode: ' + (newMode === 'auto' ? 'auto-advance' : 'presenter-controlled'));
+      });
+    }
+
+    if (action === 'edit-group') {
+      var gId = btn.getAttribute('data-group-id');
+      var gTitle = btn.getAttribute('data-group-title');
+      var newTitle = prompt('Group title:', gTitle);
+      if (newTitle && newTitle.trim() && newTitle.trim() !== gTitle) {
+        api('PATCH', { action: 'editGroup', id: gId, title: newTitle.trim() }).then(function() {
+          loadData();
+          showToast('Group updated');
+        });
+      }
+    }
+
+    if (action === 'edit-question') {
+      var qId = btn.getAttribute('data-q-id');
+      var qType = btn.getAttribute('data-q-type');
+      var qQuestion = btn.getAttribute('data-q-question');
+      var qOptions = JSON.parse(atob(btn.getAttribute('data-q-options') || 'W10='));
+      editQuestionId = qId;
+      openQuestionModal(null, qType, qQuestion, qOptions);
+    }
+  });
+
+  // =========================================
+  // Delete event
+  // =========================================
+  deleteEventBtn.addEventListener('click', function() {
+    if (!currentEventId) return;
+    var ev = allEvents.find(function(e) { return e.id === currentEventId; });
+    if (!confirm('Delete "' + (ev ? ev.title : 'this event') + '" and all its groups and questions?')) return;
+    api('DELETE', { eventId: currentEventId }).then(function() {
+      currentEventId = null;
+      loadData();
+      showToast('Event deleted');
+    });
+  });
+
+  // =========================================
+  // Create event modal
+  // =========================================
+  createEventBtn.addEventListener('click', function() {
+    eventTitleInput.value = '';
+    eventDateInput.value = '';
+    eventModal.classList.add('active');
+    eventTitleInput.focus();
+  });
+
+  eventCancelBtn.addEventListener('click', function() { eventModal.classList.remove('active'); });
+  eventModal.addEventListener('click', function(e) { if (e.target === eventModal) eventModal.classList.remove('active'); });
+
+  eventSaveBtn.addEventListener('click', function() {
+    var title = eventTitleInput.value.trim();
+    if (!title) { eventTitleInput.focus(); return; }
+    var date = eventDateInput.value || null;
+    api('POST', { action: 'createEvent', title: title, eventDate: date }).then(function(r) {
+      if (!r.ok) return;
+      return r.json().then(function(created) {
+        currentEventId = created.id;
+        eventModal.classList.remove('active');
+        loadData();
+        showToast('Event created');
+      });
+    });
+  });
+
+  eventTitleInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') eventSaveBtn.click();
+  });
+
+  // =========================================
+  // Create group modal
+  // =========================================
+  createGroupBtn.addEventListener('click', function() {
+    if (!currentEventId) {
+      showToast('Select or create an event first', 'error');
+      return;
+    }
+    groupTitleInput.value = '';
+    groupModal.classList.add('active');
+    groupTitleInput.focus();
+  });
+
+  groupCancelBtn.addEventListener('click', function() { groupModal.classList.remove('active'); });
+  groupModal.addEventListener('click', function(e) { if (e.target === groupModal) groupModal.classList.remove('active'); });
+
+  groupSaveBtn.addEventListener('click', function() {
+    var title = groupTitleInput.value.trim();
+    if (!title) { groupTitleInput.focus(); return; }
+    api('POST', { action: 'createGroup', title: title, eventId: currentEventId }).then(function(r) {
+      if (!r.ok) return;
+      groupModal.classList.remove('active');
+      loadData();
+      showToast('Group created');
+    });
+  });
+
+  groupTitleInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') groupSaveBtn.click();
+  });
+
+  // =========================================
+  // Create question modal
+  // =========================================
+  addQuestionBtn.addEventListener('click', function() {
+    if (!currentEventId) {
+      showToast('Select or create an event first', 'error');
+      return;
+    }
+    openQuestionModal(null);
+  });
+
+  var editQuestionId = null;
+
+  function openQuestionModal(groupId, editType, editQuestion, editOptions) {
+    addToGroupId = groupId;
+    if (editQuestionId) {
+      questionModalTitle.textContent = 'Edit question';
+      typeSelect.value = editType || 'poll';
+      questionInput.value = editQuestion || '';
+      updateTypeHint();
+      if (editType === 'poll' && editOptions && editOptions.length) {
+        optionsList.innerHTML = '';
+        editOptions.forEach(function(opt, i) {
+          addOptionInput(opt);
+        });
+      } else {
+        resetOptionInputs();
+      }
+    } else {
+      questionModalTitle.textContent = groupId ? 'Add question to group' : 'Create standalone question';
+      typeSelect.value = editType || 'poll';
+      questionInput.value = editQuestion || '';
+      updateTypeHint();
+      if (editOptions && editOptions.length) {
+        optionsList.innerHTML = '';
+        editOptions.forEach(function(opt) { addOptionInput(opt); });
+      } else {
+        resetOptionInputs();
+      }
+    }
+    questionModal.classList.add('active');
+    questionInput.focus();
+  }
+
+  questionCancelBtn.addEventListener('click', function() { questionModal.classList.remove('active'); editQuestionId = null; });
+  questionModal.addEventListener('click', function(e) { if (e.target === questionModal) { questionModal.classList.remove('active'); editQuestionId = null; } });
+
+  typeSelect.addEventListener('change', updateTypeHint);
+
+  function updateTypeHint() {
+    var type = typeSelect.value;
+    if (type === 'poll') {
+      optionsWrap.style.display = 'block';
+      typeHint.textContent = 'Participants pick one of the options below.';
+    } else {
+      optionsWrap.style.display = 'none';
+      typeHint.textContent = 'Participants type a word or short phrase. Results shown as a word cloud.';
+    }
+  }
+
+  addOptionBtn.addEventListener('click', function() {
+    var count = optionsList.children.length + 1;
+    var row = document.createElement('div');
+    row.className = 'option-row';
+    row.innerHTML = '<input type="text" placeholder="Option ' + count + '" class="opt-input"><button class="option-remove">&times;</button>';
+    optionsList.appendChild(row);
+    row.querySelector('input').focus();
+  });
+
+  optionsList.addEventListener('click', function(e) {
+    if (e.target.classList.contains('option-remove')) {
+      if (optionsList.children.length <= 2) return;
+      e.target.parentElement.remove();
+    }
+  });
+
+  function addOptionInput(value) {
+    var count = optionsList.children.length + 1;
+    var row = document.createElement('div');
+    row.className = 'option-row';
+    row.innerHTML = '<input type="text" placeholder="Option ' + count + '" class="opt-input" value="' + esc(value || '') + '"><button class="option-remove">&times;</button>';
+    optionsList.appendChild(row);
+  }
+
+  function resetOptionInputs() {
+    optionsList.innerHTML = '';
+    for (var i = 1; i <= 3; i++) {
+      addOptionInput('');
+    }
+  }
+
+  questionSaveBtn.addEventListener('click', function() {
+    var type = typeSelect.value;
+    var question = questionInput.value.trim();
+    if (!question) { questionInput.focus(); return; }
+
+    var options = null;
+    if (type === 'poll') {
+      var inputs = optionsList.querySelectorAll('.opt-input');
+      options = [];
+      inputs.forEach(function(inp) { var v = inp.value.trim(); if (v) options.push(v); });
+      if (options.length < 2) {
+        showToast('Add at least 2 options', 'error');
+        return;
+      }
+    }
+
+    var body;
+    if (editQuestionId) {
+      body = { action: 'editQuestion', id: editQuestionId, type: type, question: question, options: options };
+      api('PATCH', body).then(function(r) {
+        if (!r.ok) return;
+        questionModal.classList.remove('active');
+        editQuestionId = null;
+        loadData();
+        showToast('Question updated');
+      });
+      return;
+    }
+
+    if (addToGroupId) {
+      body = { action: 'addQuestion', groupId: addToGroupId, type: type, question: question, options: options };
+    } else {
+      body = { type: type, question: question, options: options, eventId: currentEventId };
+    }
+
+    api('POST', body).then(function(r) {
+      if (!r.ok) return;
+      questionModal.classList.remove('active');
+      loadData();
+      showToast('Question created');
+    });
+  });
+
+  questionInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') questionSaveBtn.click();
+  });
+
+  // =========================================
+  // Drag and drop: top-level items (groups + standalone questions)
+  // =========================================
+  var dragState = { el: null, type: null, id: null };
+  var handleEngaged = false; // tracks whether mousedown happened on a drag handle
+
+  // Track mousedown on drag handles to gate dragstart
+  document.addEventListener('mousedown', function(e) {
+    handleEngaged = !!e.target.closest('.drag-handle');
+  }, true);
+
+  function attachTopLevelDragDrop() {
+    var cards = itemList.querySelectorAll(':scope > .poll-card[draggable]');
+    cards.forEach(function(card) {
+      card.addEventListener('dragstart', onTopDragStart);
+      card.addEventListener('dragend', onTopDragEnd);
+      card.addEventListener('dragover', onTopDragOver);
+      card.addEventListener('dragleave', onTopDragLeave);
+      card.addEventListener('drop', onTopDrop);
+    });
+  }
+
+  function onTopDragStart(e) {
+    if (!handleEngaged) {
+      e.preventDefault();
+      return;
+    }
+    dragState.el = this;
+    dragState.type = this.getAttribute('data-item-type');
+    dragState.id = this.getAttribute('data-item-id');
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', 'top-level');
+  }
+
+  function onTopDragEnd(e) {
+    this.classList.remove('dragging');
+    // Clear all drag-over states
+    itemList.querySelectorAll('.drag-over').forEach(function(el) { el.classList.remove('drag-over'); });
+    dragState.el = null;
+  }
+
+  function onTopDragOver(e) {
+    if (!dragState.el || dragState.el === this) return;
+    // Only allow top-level reorder for top-level items
+    if (!this.parentElement || this.parentElement !== itemList) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    this.classList.add('drag-over');
+  }
+
+  function onTopDragLeave(e) {
+    this.classList.remove('drag-over');
+  }
+
+  function onTopDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+    if (!dragState.el || dragState.el === this) return;
+
+    // Reorder: move dragged before or after this element
+    var cards = Array.from(itemList.querySelectorAll(':scope > .poll-card[draggable]'));
+    var fromIdx = cards.indexOf(dragState.el);
+    var toIdx = cards.indexOf(this);
+    if (fromIdx < 0 || toIdx < 0) return;
+
+    // Move in DOM
+    if (fromIdx < toIdx) {
+      itemList.insertBefore(dragState.el, this.nextSibling);
+    } else {
+      itemList.insertBefore(dragState.el, this);
+    }
+
+    // Build reorder payload
+    persistTopLevelOrder();
+  }
+
+  function persistTopLevelOrder() {
+    var cards = Array.from(itemList.querySelectorAll(':scope > .poll-card[draggable]'));
+    var items = cards.map(function(card, idx) {
+      return {
+        id: card.getAttribute('data-item-id'),
+        position: idx,
+        table: card.getAttribute('data-item-type')
+      };
+    });
+
+    api('PATCH', { action: 'reorder', items: items }).then(function(r) {
+      if (r.ok) {
+        showToast('Order saved');
+        loadData();
+      }
+    });
+  }
+
+  // =========================================
+  // Drag and drop: questions within a group
+  // =========================================
+  var groupDragState = { el: null, groupId: null };
+
+  function attachGroupDragDrop() {
+    var groupContainers = itemList.querySelectorAll('.group-card__questions');
+    groupContainers.forEach(function(container) {
+      var questions = container.querySelectorAll('.group-question[draggable]');
+      questions.forEach(function(qEl) {
+        qEl.addEventListener('dragstart', onGroupQDragStart);
+        qEl.addEventListener('dragend', onGroupQDragEnd);
+        qEl.addEventListener('dragover', onGroupQDragOver);
+        qEl.addEventListener('dragleave', onGroupQDragLeave);
+        qEl.addEventListener('drop', onGroupQDrop);
+      });
+    });
+  }
+
+  function onGroupQDragStart(e) {
+    if (!handleEngaged) {
+      e.preventDefault();
+      return;
+    }
+    e.stopPropagation(); // Prevent top-level drag
+    groupDragState.el = this;
+    groupDragState.groupId = this.closest('.group-card__questions').getAttribute('data-group-id');
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', 'group-question');
+  }
+
+  function onGroupQDragEnd(e) {
+    this.classList.remove('dragging');
+    document.querySelectorAll('.group-question.drag-over').forEach(function(el) { el.classList.remove('drag-over'); });
+    groupDragState.el = null;
+  }
+
+  function onGroupQDragOver(e) {
+    if (!groupDragState.el || groupDragState.el === this) return;
+    // Must be in the same group
+    var container = this.closest('.group-card__questions');
+    if (!container || container.getAttribute('data-group-id') !== groupDragState.groupId) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    this.classList.add('drag-over');
+  }
+
+  function onGroupQDragLeave(e) {
+    this.classList.remove('drag-over');
+  }
+
+  function onGroupQDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.remove('drag-over');
+    if (!groupDragState.el || groupDragState.el === this) return;
+
+    var container = this.closest('.group-card__questions');
+    if (!container) return;
+
+    var questions = Array.from(container.querySelectorAll('.group-question[draggable]'));
+    var fromIdx = questions.indexOf(groupDragState.el);
+    var toIdx = questions.indexOf(this);
+    if (fromIdx < 0 || toIdx < 0) return;
+
+    // Move in DOM
+    if (fromIdx < toIdx) {
+      container.insertBefore(groupDragState.el, this.nextSibling);
+    } else {
+      container.insertBefore(groupDragState.el, this);
+    }
+
+    // Persist
+    var updatedQuestions = Array.from(container.querySelectorAll('.group-question[draggable]'));
+    var items = updatedQuestions.map(function(qEl, idx) {
+      return {
+        id: qEl.getAttribute('data-q-id'),
+        position: idx,
+        table: 'questions'
+      };
+    });
+
+    api('PATCH', { action: 'reorder', items: items }).then(function(r) {
+      if (r.ok) {
+        showToast('Order saved');
+        loadData();
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

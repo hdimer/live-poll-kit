@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Poll results</title>
+<link rel="icon" href="/assets/favicon.jpg" type="image/jpeg">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Playfair+Display:ital@1&family=Raleway:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #0E0E0E;
+    --copper: #B87D4B;
+    --off-white: #F8F8F8;
+    --text: #1A1A1A;
+    --gray: #777;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Raleway', sans-serif;
+    background: var(--off-white);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  .results {
+    width: 100%;
+    max-width: 800px;
+    position: relative;
+  }
+  .results__qr {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    border: 1px solid #e0e0e0;
+  }
+  .results__qr img {
+    display: block;
+    width: 120px;
+    height: 120px;
+  }
+  .results__qr-url {
+    font-size: 9px;
+    color: var(--gray);
+    text-align: center;
+    margin-top: 4px;
+  }
+  .results__label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .pulse {
+    width: 8px;
+    height: 8px;
+    background: var(--copper);
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+  .results__question {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 300;
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+  }
+  .results__count {
+    font-size: 0.85rem;
+    color: var(--gray);
+    margin-bottom: 2.5rem;
+  }
+
+  /* Poll bar chart */
+  .bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .bar__label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+  .bar__pct {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 400;
+    color: var(--copper);
+  }
+  .bar__track {
+    height: 40px;
+    background: #eeeeee;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar__fill {
+    height: 100%;
+    background: var(--copper);
+    border-radius: 4px;
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .bar__votes {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  /* Word cloud */
+  .wordcloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+  }
+  .word {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 400;
+    color: var(--text);
+    transition: font-size 0.4s ease;
+    line-height: 1.2;
+  }
+
+  .results__nav {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .results__nav-btn {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.2rem;
+    width: 40px;
+    height: 40px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .results__nav-btn:hover:not(:disabled) {
+    border-color: var(--copper);
+    color: var(--copper);
+  }
+  .results__nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+  .results__nav-pos {
+    font-family: 'Raleway', sans-serif;
+    font-size: 0.85rem;
+    color: var(--gray);
+  }
+
+  .error {
+    text-align: center;
+    color: var(--gray);
+    padding: 3rem;
+  }
+</style>
+</head>
+<body>
+<div class="results" id="results">
+  <div class="error">Loading...</div>
+</div>
+
+<script>
+(function() {
+  var container = document.getElementById('results');
+  var params = new URLSearchParams(window.location.search);
+  var questionId = params.get('id');
+  var groupId = params.get('group');
+  var questionData = null;
+
+  if (!questionId && !groupId) {
+    container.innerHTML = '<div class="error">Use ?id=... or ?group=...</div>';
+    return;
+  }
+
+  if (groupId) {
+    refreshGroup();
+    setInterval(refreshGroup, 2500);
+  } else {
+    fetch('/api/poll?id=' + questionId)
+      .then(function(r) { return r.json(); })
+      .then(function(q) {
+        questionData = q;
+        refreshResults();
+        setInterval(refreshResults, 2500);
+      })
+      .catch(function() {
+        container.innerHTML = '<div class="error">Question not found.</div>';
+      });
+  }
+
+  var allGroupQuestions = [];
+  var currentGroupIdx = 0;
+
+  function refreshGroup() {
+    fetch('/api/poll?group=' + groupId + '&results=all')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        allGroupQuestions = data.questions || [];
+        if (currentGroupIdx >= allGroupQuestions.length) currentGroupIdx = 0;
+        renderGroupQuestion();
+      });
+  }
+
+  function refreshResults() {
+    fetch('/api/poll?id=' + questionId + '&results=1')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.question) questionData = data.question;
+        renderSingle(data);
+      });
+  }
+
+  function renderGroupQuestion() {
+    if (!allGroupQuestions.length) {
+      container.innerHTML = '<div class="results__label"><span class="pulse"></span> Live results</div><div class="results__question" style="color:var(--gray)">No questions yet.</div>';
+      return;
+    }
+
+    var item = allGroupQuestions[currentGroupIdx];
+    var q = item.question;
+    var results = item.results || [];
+    var total = item.total || 0;
+    var options = q.options;
+    if (typeof options === 'string') options = JSON.parse(options);
+    q.options = options;
+
+    var count = allGroupQuestions.length;
+    var html = '<div class="results__qr"><img src="/api/poll-qr?group=' + groupId + '" alt="QR code"><div class="results__qr-url">Scan to vote</div></div>';
+    html += '<div class="results__label"><span class="pulse"></span> Live results</div>';
+
+    // Nav bar
+    if (count > 1) {
+      html += '<div class="results__nav">';
+      html += '<button class="results__nav-btn" onclick="navGroup(-1)"' + (currentGroupIdx === 0 ? ' disabled' : '') + '>&larr;</button>';
+      html += '<span class="results__nav-pos">Question ' + (currentGroupIdx + 1) + ' of ' + count + '</span>';
+      html += '<button class="results__nav-btn" onclick="navGroup(1)"' + (currentGroupIdx === count - 1 ? ' disabled' : '') + '>&rarr;</button>';
+      html += '</div>';
+    }
+
+    html += '<div class="results__question">' + esc(q.question) + '</div>';
+    html += '<div class="results__count">' + total + ' response' + (total !== 1 ? 's' : '') + '</div>';
+
+    if (q.type === 'poll') {
+      html += renderPollBarsFor(q, results, total);
+    } else {
+      html += renderWordCloud(results);
+    }
+
+    container.innerHTML = html;
+  }
+
+  window.navGroup = function(dir) {
+    currentGroupIdx += dir;
+    if (currentGroupIdx < 0) currentGroupIdx = 0;
+    if (currentGroupIdx >= allGroupQuestions.length) currentGroupIdx = allGroupQuestions.length - 1;
+    renderGroupQuestion();
+  };
+
+  function renderSingle(data) {
+    if (!questionData) return;
+    var results = data.results || [];
+    var total = data.total || 0;
+    var options = questionData.options;
+    if (typeof options === 'string') options = JSON.parse(options);
+    questionData.options = options;
+
+    var html = '';
+    if (questionId) {
+      html += '<div class="results__qr"><img src="/api/poll-qr?id=' + questionId + '" alt="QR code"><div class="results__qr-url">Scan to vote</div></div>';
+    }
+    html += '<div class="results__label"><span class="pulse"></span> Live results</div>';
+    html += '<div class="results__question">' + esc(questionData.question) + '</div>';
+    html += '<div class="results__count">' + total + ' response' + (total !== 1 ? 's' : '') + '</div>';
+
+    if (questionData.type === 'poll') {
+      html += renderPollBarsFor(questionData, results, total);
+    } else {
+      html += renderWordCloud(results);
+    }
+
+    container.innerHTML = html;
+  }
+
+  function renderPollBarsFor(q, results, total) {
+    var options = q.options || [];
+    // Build map of answer -> count
+    var counts = {};
+    results.forEach(function(r) { counts[r.answer] = r.count; });
+
+    var max = 0;
+    options.forEach(function(opt) {
+      var c = counts[opt] || 0;
+      if (c > max) max = c;
+    });
+
+    var html = '<div class="bar-chart">';
+    options.forEach(function(opt) {
+      var count = counts[opt] || 0;
+      var pct = total > 0 ? Math.round((count / total) * 100) : 0;
+      var width = max > 0 ? Math.round((count / max) * 100) : 0;
+      html += '<div class="bar">';
+      html += '<div class="bar__label"><span>' + esc(opt) + '</span><span class="bar__pct">' + pct + '%</span></div>';
+      var voteStyle = width > 15
+        ? 'right: 12px; color: white;'
+        : 'left: ' + (width + 2) + '%; color: #999;';
+      html += '<div class="bar__track"><div class="bar__fill" style="width:' + width + '%"></div><div class="bar__votes" style="' + voteStyle + '">' + count + '</div></div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function renderWordCloud(results) {
+    if (!results.length) return '<div class="wordcloud"><span style="color:var(--gray)">Waiting for responses...</span></div>';
+
+    var max = results[0].count;
+    var html = '<div class="wordcloud">';
+    results.forEach(function(r) {
+      var ratio = r.count / max;
+      var size = Math.max(16, Math.round(ratio * 72));
+      var opacity = Math.max(0.5, ratio);
+      html += '<span class="word" style="font-size:' + size + 'px;opacity:' + opacity + '">' + esc(r.answer) + '</span>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+})();
+</script>
+</body>
+</html>
