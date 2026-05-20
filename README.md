@@ -108,10 +108,10 @@ vercel.json        Routes and CORS headers
 - **No real-time push.** The voting/results pages poll the API on an interval. Fine for live audiences (you can see the numbers tick up). Not designed for thousands of concurrent voters.
 - **No rate limiting.** Add Vercel's [Edge Config](https://vercel.com/docs/storage/edge-config) or a simple in-memory limiter if you're worried about spam.
 
-## License
+## License & attribution
 
-MIT. Use it however you want. A nod back if it helped is appreciated but not required.
+[MIT](LICENSE). Copyright (c) 2026 Haim Dimer. Use it commercially, fork it, modify it. The only thing the license actually requires is keeping the copyright notice in the source.
 
-## Credit
+A small **"Live Poll Kit by Haim Dimer"** credit is rendered in the bottom-right corner of each page by default. It's a 0.65rem gray line, deliberately understated. Removing it doesn't violate the license, but please keep it if you can. Sharing this kit is more fun when people get a tiny bit of credit back.
 
-Extracted from [haimdimer.com](https://haimdimer.com), originally built for a live webinar series. If you ship something interesting with this, let me know.
+If you build something fun with this, [I'd love to hear about it](https://haimdimer.com).
