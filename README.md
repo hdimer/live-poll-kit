@@ -1,5 +1,7 @@
 # Live Poll Kit
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) ![Vercel](https://img.shields.io/badge/Vercel-black?logo=vercel) ![Neon](https://img.shields.io/badge/Neon_Postgres-00E599?logo=postgresql&logoColor=white)
+
 A drop-in live polling system for presentations, webinars, and classrooms. Visitors scan a QR code on your slide, answer on their phone, results update live. No accounts, no signup, no per-respondent cost.
 
 Built on Vercel + Neon Postgres. Three HTML pages, two API endpoints, one schema. Deploys in five minutes.
